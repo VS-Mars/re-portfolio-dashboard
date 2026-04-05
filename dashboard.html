@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Real Estate Portfolio Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d27;
+    --border: #2a2d3a;
+    --text: #e4e4e7;
+    --muted: #9ca3af;
+    --accent: #6366f1;
+    --green: #22c55e;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --orange: #f97316;
+    --purple: #a855f7;
+    --cyan: #06b6d4;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:var(--bg); color:var(--text); padding:24px; }
+  h1 { font-size:28px; margin-bottom:4px; }
+  .subtitle { color:var(--muted); font-size:14px; margin-bottom:28px; }
+  .kpi-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:28px; }
+  .kpi { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; }
+  .kpi-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; }
+  .kpi-value { font-size:26px; font-weight:700; }
+  .kpi-sub { font-size:12px; color:var(--muted); margin-top:4px; }
+  .positive { color:var(--green); }
+  .negative { color:var(--red); }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:28px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; margin-bottom:28px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; }
+  .card h3 { font-size:16px; margin-bottom:16px; }
+  .chart-container { position:relative; height:300px; }
+  .chart-container-tall { position:relative; height:400px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; color:var(--muted); font-weight:500; padding:8px 10px; border-bottom:1px solid var(--border); font-size:11px; text-transform:uppercase; }
+  td { padding:8px 10px; border-bottom:1px solid var(--border); }
+  tr:hover td { background:rgba(99,102,241,0.05); }
+  .tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; }
+  .tag-green { background:rgba(34,197,94,0.15); color:var(--green); }
+  .tag-red { background:rgba(239,68,68,0.15); color:var(--red); }
+  .section-title { font-size:20px; font-weight:700; margin:36px 0 16px; padding-top:16px; border-top:1px solid var(--border); }
+  .tab-bar { display:flex; gap:8px; margin-bottom:20px; }
+  .tab { padding:8px 16px; border-radius:8px; background:transparent; border:1px solid var(--border); color:var(--muted); cursor:pointer; font-size:13px; transition:all 0.2s; }
+  .tab.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .tab:hover { border-color:var(--accent); }
+  .full-width { grid-column: 1 / -1; }
+  @media (max-width:900px) { .grid-2, .grid-3 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<h1>Real Estate Portfolio Dashboard</h1>
+<p class="subtitle">14 Properties &bull; Updated April 2026</p>
+
+<!-- KPI Row -->
+<div class="kpi-row" id="kpis"></div>
+
+<!-- Net Worth & Equity -->
+<div class="section-title">Net Worth & Equity</div>
+<div class="grid-2">
+  <div class="card">
+    <h3>Portfolio Value vs Debt</h3>
+    <div class="chart-container"><canvas id="chartValueDebt"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>Equity by Property</h3>
+    <div class="chart-container"><canvas id="chartEquity"></canvas></div>
+  </div>
+</div>
+
+<!-- Cash Flow -->
+<div class="section-title">Cash Flow Analysis</div>
+<div class="grid-2">
+  <div class="card">
+    <h3>Annual Rent vs PITI by Property</h3>
+    <div class="chart-container"><canvas id="chartCashflow"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>Monthly Cash Flow by Property</h3>
+    <div class="chart-container"><canvas id="chartMonthlyCF"></canvas></div>
+  </div>
+</div>
+
+<!-- Debt -->
+<div class="section-title">Debt Overview</div>
+<div class="grid-3">
+  <div class="card">
+    <h3>Loan Balances</h3>
+    <div class="chart-container"><canvas id="chartLoans"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>LTV Ratios</h3>
+    <div class="chart-container"><canvas id="chartLTV"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>Interest Rates</h3>
+    <div class="chart-container"><canvas id="chartRates"></canvas></div>
+  </div>
+</div>
+
+<!-- Property Table -->
+<div class="section-title">Property Details</div>
+<div class="card" style="overflow-x:auto;">
+  <table id="propTable"></table>
+</div>
+
+<!-- Historical Trends -->
+<div class="section-title">10-Year Historical Trends (2016–2026)</div>
+<div class="grid-2">
+  <div class="card">
+    <h3>Portfolio Value & Equity Growth</h3>
+    <div class="chart-container-tall"><canvas id="chartHistValue"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>Annual Cash Flow & Rental Income</h3>
+    <div class="chart-container-tall"><canvas id="chartHistCF"></canvas></div>
+  </div>
+</div>
+<div class="grid-2">
+  <div class="card">
+    <h3>Total Debt Over Time</h3>
+    <div class="chart-container-tall"><canvas id="chartHistDebt"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>Number of Properties & Net Worth</h3>
+    <div class="chart-container-tall"><canvas id="chartHistCount"></canvas></div>
+  </div>
+</div>
+
+<!-- Projections -->
+<div class="section-title">10-Year Forward Projections (2026–2036)</div>
+<div class="tab-bar">
+  <button class="tab active" onclick="setScenario('base',this)">Base Case (3% Appr.)</button>
+  <button class="tab" onclick="setScenario('bull',this)">Bull (5% Appr.)</button>
+  <button class="tab" onclick="setScenario('bear',this)">Bear (1% Appr.)</button>
+</div>
+<div class="grid-2">
+  <div class="card">
+    <h3>Projected Net Worth</h3>
+    <div class="chart-container-tall"><canvas id="chartProjNW"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>Projected Cash Flow</h3>
+    <div class="chart-container-tall"><canvas id="chartProjCF"></canvas></div>
+  </div>
+</div>
+<div class="grid-2">
+  <div class="card">
+    <h3>Projected Debt Paydown</h3>
+    <div class="chart-container-tall"><canvas id="chartProjDebt"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>Projected Equity</h3>
+    <div class="chart-container-tall"><canvas id="chartProjEquity"></canvas></div>
+  </div>
+</div>
+
+<script>
+// =========== DATA ===========
+const properties = [
+  { id:1, name:"Las Palmas Dr", purchased:"2007-12-04", price:1000000, value:2380000, equity:1258735, loan:1121265, rate:2.875, taxRate:1.2, repairs:4, rent:5900, dwelling:38, piti:83771, down:50 },
+  { id:2, name:"Olivestone Way", purchased:"2019-12-26", price:1030000, value:1693000, equity:994571, loan:698429, rate:3.25, taxRate:1.385, repairs:4, rent:4350, dwelling:19.4, piti:58714, down:26 },
+  { id:3, name:"Rancho Dr", purchased:"2020-04-17", price:453330, value:511000, equity:204133, loan:306867, rate:3.625, taxRate:1.42, repairs:2, rent:2750, dwelling:50, piti:32351, down:25 },
+  { id:4, name:"Sage St", purchased:"2021-03-10", price:1111500, value:1340000, equity:582720, loan:757280, rate:3.5, taxRate:1.25, repairs:2, rent:5750, dwelling:55, piti:61871, down:26 },
+  { id:5, name:"Linda Vista Dr", purchased:"2021-11-29", price:1000000, value:1200000, equity:250000, loan:702280, rate:3.625, taxRate:1.25, repairs:4, rent:3640, dwelling:35, piti:58404, down:25 },
+  { id:6, name:"E Hills Dr", purchased:"2022-02-11", price:790000, value:860000, equity:197500, loan:561856, rate:4.375, taxRate:1.25, repairs:4, rent:3400, dwelling:38, piti:49180, down:25 },
+  { id:7, name:"Gawain Dr", purchased:"2022-12-30", price:860000, value:1090000, equity:304800, loan:785200, rate:7.375, taxRate:1.25, repairs:4, rent:6990, dwelling:78, piti:88945, down:12.5 },
+  { id:8, name:"N 13th St", purchased:"2023-08-03", price:910000, value:1025000, equity:255000, loan:770000, rate:6.75, taxRate:1.25, repairs:4, rent:6000, dwelling:90, piti:76091, down:18 },
+  { id:9, name:"S 3rd St", purchased:"2023-09-05", price:825000, value:1050000, equity:518000, loan:532000, rate:5.75, taxRate:1.25, repairs:8, rent:5400, dwelling:90, piti:56769, down:15 },
+  { id:10, name:"4th Ave", purchased:"2024-11-07", price:1100000, value:930000, equity:144250, loan:785750, rate:6.75, taxRate:1.25, repairs:2, rent:7350, dwelling:55, piti:81725, down:22.25 },
+  { id:11, name:"Spring Canyon Trl", purchased:"2020-08-03", price:271000, value:388000, equity:106223, loan:281777, rate:3.625, taxRate:2.24, repairs:6, rent:2040, dwelling:80, piti:27052, down:25 },
+  { id:12, name:"Fowler Mill Cv", purchased:"2020-08-03", price:386000, value:510000, equity:157397, loan:352603, rate:3.625, taxRate:2.41, repairs:6, rent:2540, dwelling:100, piti:35474, down:25 },
+  { id:13, name:"Hearthstone Dr", purchased:"2021-06-30", price:660000, value:675000, equity:211000, loan:464000, rate:3.25, taxRate:2.38, repairs:15, rent:6050, dwelling:90, piti:61286, down:25 },
+  { id:14, name:"Larga Vista Dr", purchased:"2018-01-19", price:2550000, value:4000000, equity:2000000, loan:1848000, rate:3.5, taxRate:1.3, repairs:3, rent:0, dwelling:100, piti:139811, down:31.5 },
+];
+
+// Portfolio totals
+const totalValue = 17652000;
+const totalEquity = 7184329;
+const totalLoans = 9967307;
+const totalAnnualRent = 745920;
+const totalPITI = 911444;
+const totalITI = 735169;
+const cashflowPITI = -165524;
+const cashflowITI = 10751;
+const ror = 23.35;
+const overallProfit = 639812;
+
+// =========== CHART DEFAULTS ===========
+Chart.defaults.color = '#9ca3af';
+Chart.defaults.borderColor = '#2a2d3a';
+Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.pointStyleWidth = 8;
+
+const fmt = n => '$' + Math.abs(n).toLocaleString('en-US', {maximumFractionDigits:0});
+const fmtM = n => '$' + (n/1e6).toFixed(2) + 'M';
+const fmtK = n => '$' + (n/1e3).toFixed(0) + 'K';
+const pct = n => n.toFixed(1) + '%';
+const labels = properties.map(p => p.name.replace('Property ','P'));
+
+// =========== KPIs ===========
+const kpiData = [
+  { label:'Total Portfolio Value', value:fmt(totalValue), sub:properties.length + ' properties' },
+  { label:'Total Equity', value:fmt(totalEquity), sub:pct(totalEquity/totalValue*100) + ' of value', cls:'positive' },
+  { label:'Total Debt', value:fmt(totalLoans), sub:'Avg rate ' + pct(properties.reduce((s,p)=>s+p.rate*p.loan,0)/totalLoans) },
+  { label:'Annual Rental Income', value:fmt(totalAnnualRent), sub:fmt(totalAnnualRent/12) + '/mo' },
+  { label:'Net Cash Flow (PITI)', value:(cashflowPITI<0?'-':'') + fmt(cashflowPITI), sub:fmt(cashflowPITI/12) + '/mo', cls:cashflowPITI<0?'negative':'positive' },
+  { label:'Overall Profit', value:fmt(overallProfit) + '/yr', sub:'RoR: ' + pct(ror), cls:'positive' },
+];
+document.getElementById('kpis').innerHTML = kpiData.map(k =>
+  `<div class="kpi"><div class="kpi-label">${k.label}</div><div class="kpi-value ${k.cls||''}">${k.value}</div><div class="kpi-sub">${k.sub}</div></div>`
+).join('');
+
+// =========== NET WORTH CHARTS ===========
+new Chart(document.getElementById('chartValueDebt'), {
+  type:'bar',
+  data:{
+    labels:['Portfolio'],
+    datasets:[
+      { label:'Market Value', data:[totalValue], backgroundColor:'#6366f1', borderRadius:6 },
+      { label:'Debt', data:[totalLoans], backgroundColor:'#ef4444', borderRadius:6 },
+      { label:'Equity', data:[totalEquity], backgroundColor:'#22c55e', borderRadius:6 },
+    ]
+  },
+  options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y',
+    scales:{ x:{ ticks:{ callback:v=>fmtM(v) } } },
+    plugins:{ tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(c.raw) } } }
+  }
+});
+
+new Chart(document.getElementById('chartEquity'), {
+  type:'doughnut',
+  data:{
+    labels: labels,
+    datasets:[{ data:properties.map(p=>p.equity), backgroundColor:['#6366f1','#3b82f6','#06b6d4','#22c55e','#84cc16','#eab308','#f97316','#ef4444','#ec4899','#a855f7','#8b5cf6','#14b8a6','#f43f5e','#64748b'] }]
+  },
+  options:{ responsive:true, maintainAspectRatio:false,
+    plugins:{ tooltip:{ callbacks:{ label:c=>c.label+': '+fmt(c.raw)+' ('+pct(c.raw/totalEquity*100)+')' } } }
+  }
+});
+
+// =========== CASH FLOW CHARTS ===========
+new Chart(document.getElementById('chartCashflow'), {
+  type:'bar',
+  data:{
+    labels,
+    datasets:[
+      { label:'Annual Rent', data:properties.map(p=>p.rent*12), backgroundColor:'#22c55e99', borderRadius:4 },
+      { label:'Annual PITI', data:properties.map(p=>p.piti), backgroundColor:'#ef444499', borderRadius:4 },
+    ]
+  },
+  options:{ responsive:true, maintainAspectRatio:false,
+    scales:{ y:{ ticks:{ callback:v=>fmtK(v) } } },
+    plugins:{ tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(c.raw) } } }
+  }
+});
+
+new Chart(document.getElementById('chartMonthlyCF'), {
+  type:'bar',
+  data:{
+    labels,
+    datasets:[{
+      label:'Monthly Cash Flow',
+      data:properties.map(p=> p.rent - p.piti/12),
+      backgroundColor:properties.map(p=> (p.rent - p.piti/12)>=0 ? '#22c55e99' : '#ef444499'),
+      borderRadius:4
+    }]
+  },
+  options:{ responsive:true, maintainAspectRatio:false,
+    scales:{ y:{ ticks:{ callback:v=>'$'+v.toLocaleString() } } },
+    plugins:{ tooltip:{ callbacks:{ label:c=>'$'+Math.round(c.raw).toLocaleString()+'/mo' } } }
+  }
+});
+
+// =========== DEBT CHARTS ===========
+new Chart(document.getElementById('chartLoans'), {
+  type:'bar',
+  data:{
+    labels,
+    datasets:[{ label:'Loan Balance', data:properties.map(p=>p.loan), backgroundColor:'#f9731699', borderRadius:4 }]
+  },
+  options:{ responsive:true, maintainAspectRatio:false,
+    scales:{ y:{ ticks:{ callback:v=>fmtK(v) } } },
+    plugins:{ tooltip:{ callbacks:{ label:c=>fmt(c.raw) } } }
+  }
+});
+
+new Chart(document.getElementById('chartLTV'), {
+  type:'bar',
+  data:{
+    labels,
+    datasets:[{
+      label:'LTV %',
+      data:properties.map(p=> ((p.loan/p.value)*100)),
+      backgroundColor:properties.map(p=> (p.loan/p.value)>0.8 ? '#ef444499' : (p.loan/p.value)>0.6 ? '#f9731699' : '#22c55e99'),
+      borderRadius:4
+    }]
+  },
+  options:{ responsive:true, maintainAspectRatio:false,
+    scales:{ y:{ max:100, ticks:{ callback:v=>v+'%' } } },
+    plugins:{ tooltip:{ callbacks:{ label:c=>pct(c.raw) } } }
+  }
+});
+
+new Chart(document.getElementById('chartRates'), {
+  type:'bar',
+  data:{
+    labels,
+    datasets:[{
+      label:'Interest Rate',
+      data:properties.map(p=>p.rate),
+      backgroundColor:properties.map(p=> p.rate>6 ? '#ef444499' : p.rate>4 ? '#f9731699' : '#22c55e99'),
+      borderRadius:4
+    }]
+  },
+  options:{ responsive:true, maintainAspectRatio:false,
+    scales:{ y:{ ticks:{ callback:v=>v+'%' } } },
+    plugins:{ tooltip:{ callbacks:{ label:c=>pct(c.raw) } } }
+  }
+});
+
+// =========== PROPERTY TABLE ===========
+document.getElementById('propTable').innerHTML = `
+<thead><tr><th>#</th><th>Purchased</th><th>Price</th><th>Value</th><th>Equity</th><th>Loan</th><th>Rate</th><th>LTV</th><th>Rent/mo</th><th>PITI/yr</th><th>CF/yr</th><th>Down%</th></tr></thead>
+<tbody>${properties.map(p => {
+  const cf = p.rent*12 - p.piti;
+  const ltv = (p.loan/p.value*100);
+  return `<tr>
+    <td><strong>${p.name}</strong></td>
+    <td>${p.purchased}</td>
+    <td>${fmt(p.price)}</td>
+    <td>${fmt(p.value)}</td>
+    <td>${fmt(p.equity)}</td>
+    <td>${fmt(p.loan)}</td>
+    <td>${pct(p.rate)}</td>
+    <td><span class="tag ${ltv>80?'tag-red':'tag-green'}">${pct(ltv)}</span></td>
+    <td>${fmt(p.rent)}</td>
+    <td>${fmt(p.piti)}</td>
+    <td><span class="tag ${cf>=0?'tag-green':'tag-red'}">${cf>=0?'':'-'}${fmt(cf)}</span></td>
+    <td>${p.down}%</td>
+  </tr>`;
+}).join('')}
+<tr style="font-weight:700;border-top:2px solid var(--accent)">
+  <td>TOTAL</td><td></td>
+  <td>${fmt(properties.reduce((s,p)=>s+p.price,0))}</td>
+  <td>${fmt(totalValue)}</td>
+  <td>${fmt(totalEquity)}</td>
+  <td>${fmt(totalLoans)}</td>
+  <td>${pct(properties.reduce((s,p)=>s+p.rate*p.loan,0)/totalLoans)}</td>
+  <td><span class="tag ${(totalLoans/totalValue*100)>80?'tag-red':'tag-green'}">${pct(totalLoans/totalValue*100)}</span></td>
+  <td>${fmt(totalAnnualRent/12)}</td>
+  <td>${fmt(totalPITI)}</td>
+  <td><span class="tag ${cashflowPITI>=0?'tag-green':'tag-red'}">${cashflowPITI>=0?'':'-'}${fmt(cashflowPITI)}</span></td>
+  <td></td>
+</tr></tbody>`;
+
+// =========== HISTORICAL TRENDS (modeled) ===========
+// Reconstruct historical portfolio based on acquisition dates
+function buildHistory() {
+  const years = [];
+  for (let y=2016; y<=2026; y++) years.push(y);
+
+  const histValue=[], histEquity=[], histDebt=[], histRent=[], histCF=[], histCount=[];
+
+  years.forEach(year => {
+    let val=0, eq=0, debt=0, rent=0, piti=0, count=0;
+    properties.forEach(p => {
+      const acqYear = parseInt(p.purchased.split('-')[0]);
+      if (acqYear > year) return;
+      count++;
+      const yearsHeld = year - acqYear;
+      // Estimate value growth at ~4% avg appreciation
+      const valueThen = p.value / Math.pow(1.04, 2026-year);
+      // Estimate loan balance (rough: linear interpolation from price*(1-down/100) to current loan)
+      const origLoan = p.price * (1 - p.down/100);
+      const totalYears = 2026 - acqYear;
+      const loanThen = totalYears > 0 ? origLoan + (p.loan - origLoan) * (yearsHeld / totalYears) : p.loan;
+      const eqThen = valueThen - loanThen;
+      val += valueThen;
+      debt += loanThen;
+      eq += eqThen;
+      // Rent grows ~3%/yr
+      const rentThen = p.rent * 12 / Math.pow(1.03, 2026-year);
+      rent += acqYear <= year ? rentThen : 0;
+      // PITI roughly constant (fixed rate mortgages)
+      piti += acqYear <= year ? p.piti : 0;
+    });
+    histValue.push(val);
+    histEquity.push(eq);
+    histDebt.push(debt);
+    histRent.push(rent);
+    histCF.push(rent - piti);
+    histCount.push(count);
+  });
+
+  return { years, histValue, histEquity, histDebt, histRent, histCF, histCount };
+}
+
+const hist = buildHistory();
+
+new Chart(document.getElementById('chartHistValue'), {
+  type:'line',
+  data:{
+    labels:hist.years,
+    datasets:[
+      { label:'Portfolio Value', data:hist.histValue, borderColor:'#6366f1', backgroundColor:'#6366f120', fill:true, tension:0.3 },
+      { label:'Equity', data:hist.histEquity, borderColor:'#22c55e', backgroundColor:'#22c55e20', fill:true, tension:0.3 },
+    ]
+  },
+  options:{ responsive:true, maintainAspectRatio:false,
+    scales:{ y:{ ticks:{ callback:v=>fmtM(v) } } },
+    plugins:{ tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(c.raw) } } }
+  }
+});
+
+new Chart(document.getElementById('chartHistCF'), {
+  type:'line',
+  data:{
+    labels:hist.years,
+    datasets:[
+      { label:'Rental Income', data:hist.histRent, borderColor:'#22c55e', tension:0.3 },
+      { label:'Net Cash Flow', data:hist.histCF, borderColor:hist.histCF.map(v=>v>=0?'#22c55e':'#ef4444'), backgroundColor:'#6366f120', fill:true, tension:0.3, segment:{ borderColor:ctx=> ctx.p0.parsed.y<0?'#ef4444':'#22c55e' } },
+    ]
+  },
+  options:{ responsive:true, maintainAspectRatio:false,
+    scales:{ y:{ ticks:{ callback:v=>fmtK(v) } } },
+    plugins:{ tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(c.raw) } } }
+  }
+});
+
+new Chart(document.getElementById('chartHistDebt'), {
+  type:'line',
+  data:{
+    labels:hist.years,
+    datasets:[
+      { label:'Total Debt', data:hist.histDebt, borderColor:'#f97316', backgroundColor:'#f9731620', fill:true, tension:0.3 },
+    ]
+  },
+  options:{ responsive:true, maintainAspectRatio:false,
+    scales:{ y:{ ticks:{ callback:v=>fmtM(v) } } },
+    plugins:{ tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(c.raw) } } }
+  }
+});
+
+new Chart(document.getElementById('chartHistCount'), {
+  type:'line',
+  data:{
+    labels:hist.years,
+    datasets:[
+      { label:'Net Worth', data:hist.histEquity, borderColor:'#6366f1', tension:0.3, yAxisID:'y' },
+      { label:'# Properties', data:hist.histCount, borderColor:'#a855f7', tension:0.3, yAxisID:'y1', stepped:true },
+    ]
+  },
+  options:{ responsive:true, maintainAspectRatio:false,
+    scales:{
+      y:{ position:'left', ticks:{ callback:v=>fmtM(v) } },
+      y1:{ position:'right', grid:{ drawOnChartArea:false }, ticks:{ stepSize:1 } }
+    },
+    plugins:{ tooltip:{ callbacks:{ label:c=> c.dataset.label === '# Properties' ? c.raw+' properties' : c.dataset.label+': '+fmt(c.raw) } } }
+  }
+});
+
+// =========== PROJECTIONS ===========
+let projCharts = {};
+const scenarios = {
+  base: { appr:0.03, rentGr:0.03, label:'Base Case (3%)' },
+  bull: { appr:0.05, rentGr:0.04, label:'Bull Case (5%)' },
+  bear: { appr:0.01, rentGr:0.02, label:'Bear Case (1%)' },
+};
+
+function buildProjection(scenario) {
+  const s = scenarios[scenario];
+  const years = [];
+  for (let y=2026; y<=2036; y++) years.push(y);
+
+  const projValue=[], projEquity=[], projDebt=[], projCF=[];
+
+  years.forEach((year,i) => {
+    let val=0, debt=0, rent=0, piti=0;
+    properties.forEach(p => {
+      // Appreciation
+      val += p.value * Math.pow(1+s.appr, i);
+      // Amortization: rough model — reduce loan by principal portion each year
+      const monthlyRate = p.rate/100/12;
+      const remainingMonths = Math.max(0, 360 - ((2026 - parseInt(p.purchased.split('-')[0]))*12));
+      let loanBal = p.loan;
+      if (monthlyRate > 0 && remainingMonths > 0) {
+        const monthlyPmt = loanBal * monthlyRate / (1 - Math.pow(1+monthlyRate, -remainingMonths));
+        for (let m=0; m<i*12 && loanBal>0; m++) {
+          const interest = loanBal * monthlyRate;
+          const principal = monthlyPmt - interest;
+          loanBal = Math.max(0, loanBal - principal);
+        }
+      }
+      debt += loanBal;
+      rent += p.rent * 12 * Math.pow(1+s.rentGr, i);
+      piti += p.piti; // fixed rate, PITI mostly constant
+    });
+    projValue.push(val);
+    projEquity.push(val - debt);
+    projDebt.push(debt);
+    projCF.push(rent - properties.reduce((s,p)=>s+p.piti,0));
+  });
+  return { years, projValue, projEquity, projDebt, projCF };
+}
+
+function renderProjections(scenario) {
+  const proj = buildProjection(scenario);
+  const s = scenarios[scenario];
+
+  // Destroy old charts
+  Object.values(projCharts).forEach(c => c.destroy());
+  projCharts = {};
+
+  projCharts.nw = new Chart(document.getElementById('chartProjNW'), {
+    type:'line',
+    data:{
+      labels:proj.years,
+      datasets:[
+        { label:'Net Worth (Equity)', data:proj.projEquity, borderColor:'#22c55e', backgroundColor:'#22c55e20', fill:true, tension:0.3 },
+        { label:'Portfolio Value', data:proj.projValue, borderColor:'#6366f1', tension:0.3 },
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ y:{ ticks:{ callback:v=>fmtM(v) } } },
+      plugins:{ tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(Math.round(c.raw)) } } }
+    }
+  });
+
+  projCharts.cf = new Chart(document.getElementById('chartProjCF'), {
+    type:'line',
+    data:{
+      labels:proj.years,
+      datasets:[
+        { label:'Annual Cash Flow', data:proj.projCF, borderColor:'#06b6d4', backgroundColor:'#06b6d420', fill:true, tension:0.3,
+          segment:{ borderColor:ctx=>ctx.p0.parsed.y<0?'#ef4444':'#06b6d4', backgroundColor:ctx=>ctx.p0.parsed.y<0?'#ef444420':'#06b6d420' }
+        },
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ y:{ ticks:{ callback:v=>fmtK(v) } } },
+      plugins:{ tooltip:{ callbacks:{ label:c=>'Cash Flow: '+fmt(Math.round(c.raw)) } } }
+    }
+  });
+
+  projCharts.debt = new Chart(document.getElementById('chartProjDebt'), {
+    type:'line',
+    data:{
+      labels:proj.years,
+      datasets:[
+        { label:'Total Debt', data:proj.projDebt, borderColor:'#f97316', backgroundColor:'#f9731620', fill:true, tension:0.3 },
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ y:{ ticks:{ callback:v=>fmtM(v) } } },
+      plugins:{ tooltip:{ callbacks:{ label:c=>'Debt: '+fmt(Math.round(c.raw)) } } }
+    }
+  });
+
+  projCharts.equity = new Chart(document.getElementById('chartProjEquity'), {
+    type:'line',
+    data:{
+      labels:proj.years,
+      datasets:[
+        { label:'Equity', data:proj.projEquity, borderColor:'#a855f7', backgroundColor:'#a855f720', fill:true, tension:0.3 },
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ y:{ ticks:{ callback:v=>fmtM(v) } } },
+      plugins:{ tooltip:{ callbacks:{ label:c=>'Equity: '+fmt(Math.round(c.raw)) } } }
+    }
+  });
+}
+
+function setScenario(s, btn) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderProjections(s);
+}
+
+// Initial render
+renderProjections('base');
+</script>
+</body>
+</html>
