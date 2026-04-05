@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Real Estate Portfolio Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <style>
   :root {
     --bg: #0f1117;
@@ -193,6 +194,7 @@ const ror = 23.35;
 const overallProfit = 639812;
 
 // =========== CHART DEFAULTS ===========
+Chart.register(ChartDataLabels);
 Chart.defaults.color = '#9ca3af';
 Chart.defaults.borderColor = '#2a2d3a';
 Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
@@ -232,7 +234,7 @@ new Chart(document.getElementById('chartValueDebt'), {
   },
   options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y',
     scales:{ x:{ ticks:{ callback:v=>fmtM(v) } } },
-    plugins:{ tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(c.raw) } } }
+    plugins:{ datalabels:{ display:false }, tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(c.raw) } } }
   }
 });
 
@@ -243,7 +245,15 @@ new Chart(document.getElementById('chartEquity'), {
     datasets:[{ data:properties.map(p=>p.equity), backgroundColor:['#6366f1','#3b82f6','#06b6d4','#22c55e','#84cc16','#eab308','#f97316','#ef4444','#ec4899','#a855f7','#8b5cf6','#14b8a6','#f43f5e','#64748b'] }]
   },
   options:{ responsive:true, maintainAspectRatio:false,
-    plugins:{ tooltip:{ callbacks:{ label:c=>c.label+': '+fmt(c.raw)+' ('+pct(c.raw/totalEquity*100)+')' } } }
+    plugins:{
+      tooltip:{ callbacks:{ label:c=>c.label+': '+fmt(c.raw)+' ('+pct(c.raw/totalEquity*100)+')' } },
+      datalabels:{
+        color:'#fff',
+        font:{ size:10, weight:'bold' },
+        formatter:(value)=>pct(value/totalEquity*100),
+        display: ctx => (ctx.dataset.data[ctx.dataIndex]/totalEquity*100) > 3
+      }
+    }
   }
 });
 
@@ -259,7 +269,20 @@ new Chart(document.getElementById('chartCashflow'), {
   },
   options:{ responsive:true, maintainAspectRatio:false,
     scales:{ y:{ ticks:{ callback:v=>fmtK(v) } } },
-    plugins:{ tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(c.raw) } } }
+    plugins:{
+      tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(c.raw) } },
+      datalabels:{
+        anchor:'end', align:'end',
+        color:'#e4e4e7', font:{ size:9 },
+        formatter:(value, ctx) => {
+          // Show monthly value
+          const monthly = Math.round(value / 12);
+          return '$' + monthly.toLocaleString();
+        },
+        rotation: -45,
+        offset: 2
+      }
+    }
   }
 });
 
@@ -276,7 +299,17 @@ new Chart(document.getElementById('chartMonthlyCF'), {
   },
   options:{ responsive:true, maintainAspectRatio:false,
     scales:{ y:{ ticks:{ callback:v=>'$'+v.toLocaleString() } } },
-    plugins:{ tooltip:{ callbacks:{ label:c=>'$'+Math.round(c.raw).toLocaleString()+'/mo' } } }
+    plugins:{
+      tooltip:{ callbacks:{ label:c=>'$'+Math.round(c.raw).toLocaleString()+'/mo' } },
+      datalabels:{
+        anchor: ctx => ctx.dataset.data[ctx.dataIndex] >= 0 ? 'end' : 'start',
+        align:  ctx => ctx.dataset.data[ctx.dataIndex] >= 0 ? 'end' : 'start',
+        color:'#e4e4e7', font:{ size:9, weight:'bold' },
+        formatter: value => (value>=0?'$':'-$') + Math.abs(Math.round(value)).toLocaleString(),
+        rotation: -45,
+        offset: 2
+      }
+    }
   }
 });
 
@@ -289,7 +322,15 @@ new Chart(document.getElementById('chartLoans'), {
   },
   options:{ responsive:true, maintainAspectRatio:false,
     scales:{ y:{ ticks:{ callback:v=>fmtK(v) } } },
-    plugins:{ tooltip:{ callbacks:{ label:c=>fmt(c.raw) } } }
+    plugins:{
+      tooltip:{ callbacks:{ label:c=>fmt(c.raw) } },
+      datalabels:{
+        anchor:'end', align:'end',
+        color:'#e4e4e7', font:{ size:9 },
+        formatter: value => fmtK(value),
+        rotation: -45, offset: 2
+      }
+    }
   }
 });
 
@@ -305,8 +346,16 @@ new Chart(document.getElementById('chartLTV'), {
     }]
   },
   options:{ responsive:true, maintainAspectRatio:false,
-    scales:{ y:{ max:100, ticks:{ callback:v=>v+'%' } } },
-    plugins:{ tooltip:{ callbacks:{ label:c=>pct(c.raw) } } }
+    scales:{ y:{ max:110, ticks:{ callback:v=>v+'%' } } },
+    plugins:{
+      tooltip:{ callbacks:{ label:c=>pct(c.raw) } },
+      datalabels:{
+        anchor:'end', align:'end',
+        color:'#e4e4e7', font:{ size:9 },
+        formatter: value => pct(value),
+        rotation: -45, offset: 2
+      }
+    }
   }
 });
 
@@ -323,7 +372,15 @@ new Chart(document.getElementById('chartRates'), {
   },
   options:{ responsive:true, maintainAspectRatio:false,
     scales:{ y:{ ticks:{ callback:v=>v+'%' } } },
-    plugins:{ tooltip:{ callbacks:{ label:c=>pct(c.raw) } } }
+    plugins:{
+      tooltip:{ callbacks:{ label:c=>pct(c.raw) } },
+      datalabels:{
+        anchor:'end', align:'end',
+        color:'#e4e4e7', font:{ size:9 },
+        formatter: value => pct(value),
+        rotation: -45, offset: 2
+      }
+    }
   }
 });
 
@@ -417,7 +474,7 @@ new Chart(document.getElementById('chartHistValue'), {
   },
   options:{ responsive:true, maintainAspectRatio:false,
     scales:{ y:{ ticks:{ callback:v=>fmtM(v) } } },
-    plugins:{ tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(c.raw) } } }
+    plugins:{ datalabels:{ display:false }, tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(c.raw) } } }
   }
 });
 
@@ -432,7 +489,7 @@ new Chart(document.getElementById('chartHistCF'), {
   },
   options:{ responsive:true, maintainAspectRatio:false,
     scales:{ y:{ ticks:{ callback:v=>fmtK(v) } } },
-    plugins:{ tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(c.raw) } } }
+    plugins:{ datalabels:{ display:false }, tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(c.raw) } } }
   }
 });
 
@@ -446,7 +503,7 @@ new Chart(document.getElementById('chartHistDebt'), {
   },
   options:{ responsive:true, maintainAspectRatio:false,
     scales:{ y:{ ticks:{ callback:v=>fmtM(v) } } },
-    plugins:{ tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(c.raw) } } }
+    plugins:{ datalabels:{ display:false }, tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(c.raw) } } }
   }
 });
 
@@ -464,7 +521,7 @@ new Chart(document.getElementById('chartHistCount'), {
       y:{ position:'left', ticks:{ callback:v=>fmtM(v) } },
       y1:{ position:'right', grid:{ drawOnChartArea:false }, ticks:{ stepSize:1 } }
     },
-    plugins:{ tooltip:{ callbacks:{ label:c=> c.dataset.label === '# Properties' ? c.raw+' properties' : c.dataset.label+': '+fmt(c.raw) } } }
+    plugins:{ datalabels:{ display:false }, tooltip:{ callbacks:{ label:c=> c.dataset.label === '# Properties' ? c.raw+' properties' : c.dataset.label+': '+fmt(c.raw) } } }
   }
 });
 
@@ -531,7 +588,7 @@ function renderProjections(scenario) {
     },
     options:{ responsive:true, maintainAspectRatio:false,
       scales:{ y:{ ticks:{ callback:v=>fmtM(v) } } },
-      plugins:{ tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(Math.round(c.raw)) } } }
+      plugins:{ datalabels:{ display:false }, tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(Math.round(c.raw)) } } }
     }
   });
 
@@ -547,7 +604,7 @@ function renderProjections(scenario) {
     },
     options:{ responsive:true, maintainAspectRatio:false,
       scales:{ y:{ ticks:{ callback:v=>fmtK(v) } } },
-      plugins:{ tooltip:{ callbacks:{ label:c=>'Cash Flow: '+fmt(Math.round(c.raw)) } } }
+      plugins:{ datalabels:{ display:false }, tooltip:{ callbacks:{ label:c=>'Cash Flow: '+fmt(Math.round(c.raw)) } } }
     }
   });
 
@@ -561,7 +618,7 @@ function renderProjections(scenario) {
     },
     options:{ responsive:true, maintainAspectRatio:false,
       scales:{ y:{ ticks:{ callback:v=>fmtM(v) } } },
-      plugins:{ tooltip:{ callbacks:{ label:c=>'Debt: '+fmt(Math.round(c.raw)) } } }
+      plugins:{ datalabels:{ display:false }, tooltip:{ callbacks:{ label:c=>'Debt: '+fmt(Math.round(c.raw)) } } }
     }
   });
 
@@ -575,7 +632,7 @@ function renderProjections(scenario) {
     },
     options:{ responsive:true, maintainAspectRatio:false,
       scales:{ y:{ ticks:{ callback:v=>fmtM(v) } } },
-      plugins:{ tooltip:{ callbacks:{ label:c=>'Equity: '+fmt(Math.round(c.raw)) } } }
+      plugins:{ datalabels:{ display:false }, tooltip:{ callbacks:{ label:c=>'Equity: '+fmt(Math.round(c.raw)) } } }
     }
   });
 }
