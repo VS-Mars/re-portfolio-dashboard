@@ -58,6 +58,7 @@
 
 <h1>Real Estate Portfolio Dashboard</h1>
 <p class="subtitle">14 Properties &bull; Updated April 2026</p>
+<div id="dataBanner" style="font-size:12px;color:var(--muted);margin-bottom:16px;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;display:inline-block;">Loading data...</div>
 
 <!-- KPI Row -->
 <div class="kpi-row" id="kpis"></div>
@@ -163,8 +164,12 @@
 </div>
 
 <script>
-// =========== DATA ===========
-const properties = [
+// =========== APPS SCRIPT URL ===========
+// After deploying the Apps Script, paste your Web App URL here:
+const SCRIPT_URL = ''; // <-- PASTE URL HERE
+
+// =========== FALLBACK DATA (used if SCRIPT_URL is empty or fetch fails) ===========
+const FALLBACK_PROPERTIES = [
   { id:1, name:"Las Palmas Dr", purchased:"2007-12-04", price:1000000, value:2380000, equity:1258735, loan:1121265, rate:2.875, taxRate:1.2, repairs:4, rent:5900, dwelling:38, piti:83771, down:50 },
   { id:2, name:"Olivestone Way", purchased:"2019-12-26", price:1030000, value:1693000, equity:994571, loan:698429, rate:3.25, taxRate:1.385, repairs:4, rent:4350, dwelling:19.4, piti:58714, down:26 },
   { id:3, name:"Rancho Dr", purchased:"2020-04-17", price:453330, value:511000, equity:204133, loan:306867, rate:3.625, taxRate:1.42, repairs:2, rent:2750, dwelling:50, piti:32351, down:25 },
@@ -180,18 +185,66 @@ const properties = [
   { id:13, name:"Hearthstone Dr", purchased:"2021-06-30", price:660000, value:675000, equity:211000, loan:464000, rate:3.25, taxRate:2.38, repairs:15, rent:6050, dwelling:90, piti:61286, down:25 },
   { id:14, name:"Larga Vista Dr", purchased:"2018-01-19", price:2550000, value:4000000, equity:2000000, loan:1848000, rate:3.5, taxRate:1.3, repairs:3, rent:0, dwelling:100, piti:139811, down:31.5 },
 ];
+const FALLBACK_SUMMARY = {
+  totalValue:17652000, totalEquity:7184329, totalLoans:9967307,
+  totalAnnualRent:745920, totalPITI:911444, totalITI:735169,
+  cashflowPITI:-165524, cashflowITI:10751, ror:23.35, overallProfit:639812
+};
 
-// Portfolio totals
-const totalValue = 17652000;
-const totalEquity = 7184329;
-const totalLoans = 9967307;
-const totalAnnualRent = 745920;
-const totalPITI = 911444;
-const totalITI = 735169;
-const cashflowPITI = -165524;
-const cashflowITI = 10751;
-const ror = 23.35;
-const overallProfit = 639812;
+// =========== BOOTSTRAP ===========
+let properties, totalValue, totalEquity, totalLoans, totalAnnualRent,
+    totalPITI, totalITI, cashflowPITI, cashflowITI, ror, overallProfit;
+
+async function loadData() {
+  const banner = document.getElementById('dataBanner');
+  if (SCRIPT_URL) {
+    try {
+      const res = await fetch(SCRIPT_URL);
+      const json = await res.json();
+      properties = json.properties;
+
+      // Map summary keys from sheet labels
+      const s = json.summary;
+      const get = (...keys) => { for(const k of keys){ if(s[k]!==undefined) return +s[k]; } return 0; };
+      totalValue      = get('Total Portfolio Value');
+      totalEquity     = get('Total Equity');
+      totalLoans      = get('Total Loans','Total Debt');
+      totalAnnualRent = get('Total Annual Rent','Annual Rental Income');
+      totalPITI       = get('Total Annual PITI','Annual PITI');
+      totalITI        = get('Total Annual ITI','Annual ITI');
+      cashflowPITI    = get('Net Cash Flow (PITI)','PITI Cash Flow');
+      cashflowITI     = get('Net Cash Flow (ITI)','ITI Cash Flow');
+      ror             = get('Portfolio Rate of Return','RoR') * (get('Portfolio Rate of Return','RoR') < 1 ? 100 : 1);
+      overallProfit   = get('Overall Annual Profit','Overall Profit');
+
+      if (banner) banner.innerHTML = '🟢 Live data from Google Sheets &nbsp;·&nbsp; Updated: ' + new Date(json.lastUpdated).toLocaleString();
+    } catch(e) {
+      console.warn('Failed to fetch live data, using fallback:', e);
+      useFallback();
+      if (banner) banner.innerHTML = '🟡 Showing cached data (could not reach Google Sheets)';
+    }
+  } else {
+    useFallback();
+    if (banner) banner.innerHTML = '⚪ Static data · <a href="https://github.com/VS-Mars/re-portfolio-dashboard" style="color:#6366f1">Connect Google Sheets</a>';
+  }
+  initDashboard();
+}
+
+function useFallback() {
+  properties    = FALLBACK_PROPERTIES;
+  totalValue    = FALLBACK_SUMMARY.totalValue;
+  totalEquity   = FALLBACK_SUMMARY.totalEquity;
+  totalLoans    = FALLBACK_SUMMARY.totalLoans;
+  totalAnnualRent = FALLBACK_SUMMARY.totalAnnualRent;
+  totalPITI     = FALLBACK_SUMMARY.totalPITI;
+  totalITI      = FALLBACK_SUMMARY.totalITI;
+  cashflowPITI  = FALLBACK_SUMMARY.cashflowPITI;
+  cashflowITI   = FALLBACK_SUMMARY.cashflowITI;
+  ror           = FALLBACK_SUMMARY.ror;
+  overallProfit = FALLBACK_SUMMARY.overallProfit;
+}
+
+function initDashboard() {
 
 // =========== CHART DEFAULTS ===========
 Chart.register(ChartDataLabels);
@@ -645,6 +698,11 @@ function setScenario(s, btn) {
 
 // Initial render
 renderProjections('base');
+
+} // end initDashboard()
+
+// =========== KICK OFF ===========
+loadData();
 </script>
 </body>
 </html>
