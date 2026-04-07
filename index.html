@@ -207,7 +207,7 @@ const FALLBACK_SUMMARY = {
 };
 
 // =========== STATIC NON-RE WEALTH (from Monarch Money snapshot, April 2026) ===========
-const STATIC_WEALTH = {
+const wealth = {
   stockPlan:  637875,   // SNPS Stock Plan (...7505)
   k401:       982846,   // Synopsys 401k $665,543 + Cisco 401k $317,303
   brokerage:  121087,   // Joint Brokerage $28,600 + Non-Prototype $92,486
@@ -217,7 +217,7 @@ const STATIC_WEALTH = {
 
 // =========== BOOTSTRAP ===========
 let properties, totalValue, totalEquity, totalLoans, totalAnnualRent,
-    totalPITI, totalITI, cashflowPITI, cashflowITI, ror, overallProfit;
+    totalPITI, totalITI, cashflowPITI, cashflowITI, ror, overallProfit, wealth;
 
 async function loadData() {
   const banner = document.getElementById('dataBanner');
@@ -241,6 +241,19 @@ async function loadData() {
       ror             = get('Portfolio Rate of Return','RoR') * (get('Portfolio Rate of Return','RoR') < 1 ? 100 : 1);
       overallProfit   = get('Overall Annual Profit','Overall Profit');
 
+      // Parse Other Assets tab into wealth buckets
+      wealth = {...wealth}; // start with fallback
+      if (json.otherAssets && json.otherAssets.length > 0) {
+        const sum = (...terms) => json.otherAssets
+          .filter(a => terms.some(t => a.name.toLowerCase().includes(t.toLowerCase())))
+          .reduce((s,a) => s + a.value, 0);
+        wealth.stockPlan = sum('stock plan', 'snps') || wealth.stockPlan;
+        wealth.k401      = sum('401')               || wealth.k401;
+        wealth.brokerage = sum('brokerage')         || wealth.brokerage;
+        wealth.indiaRE   = sum('india')             || wealth.indiaRE;
+        wealth.vehicles  = sum('vehicle')           || wealth.vehicles;
+      }
+
       if (banner) banner.innerHTML = '🟢 Live data from Google Sheets &nbsp;·&nbsp; Updated: ' + new Date(json.lastUpdated).toLocaleString();
     } catch(e) {
       console.warn('Failed to fetch live data, using fallback:', e);
@@ -255,6 +268,7 @@ async function loadData() {
 }
 
 function useFallback() {
+  wealth        = {...wealth};
   properties    = FALLBACK_PROPERTIES;
   totalValue    = FALLBACK_SUMMARY.totalValue;
   totalEquity   = FALLBACK_SUMMARY.totalEquity;
@@ -299,8 +313,8 @@ document.getElementById('kpis').innerHTML = kpiData.map(k =>
 ).join('');
 
 // =========== TOTAL NET WORTH SECTION ===========
-const totalNonRE      = Object.values(STATIC_WEALTH).reduce((s,v)=>s+v, 0);
-const totalInvestments = STATIC_WEALTH.stockPlan + STATIC_WEALTH.k401 + STATIC_WEALTH.brokerage;
+const totalNonRE      = Object.values(wealth).reduce((s,v)=>s+v, 0);
+const totalInvestments = wealth.stockPlan + wealth.k401 + wealth.brokerage;
 const totalNetWorth   = totalEquity + totalNonRE;
 const totalGrossAssets = totalValue + totalNonRE;
 
@@ -308,14 +322,14 @@ const nwKpiData = [
   { label:'Total Net Worth',    value:fmt(totalNetWorth),   sub:'All assets minus RE debt', cls:'positive' },
   { label:'Total Gross Assets', value:fmt(totalGrossAssets), sub:'Debt: ' + fmt(totalLoans) },
   { label:'Investments',        value:fmt(totalInvestments), sub:'Stocks · 401(k) · Brokerage' },
-  { label:'Other Assets',       value:fmt(STATIC_WEALTH.indiaRE + STATIC_WEALTH.vehicles), sub:'India RE · Vehicles' },
+  { label:'Other Assets',       value:fmt(wealth.indiaRE + wealth.vehicles), sub:'India RE · Vehicles' },
 ];
 document.getElementById('nwKpis').innerHTML = nwKpiData.map(k =>
   `<div class="kpi"><div class="kpi-label">${k.label}</div><div class="kpi-value ${k.cls||''}">${k.value}</div><div class="kpi-sub">${k.sub}</div></div>`
 ).join('');
 
 const wealthLabels = ['RE Equity (US)', 'Stock Plan (SNPS)', '401(k)', 'Brokerage', 'RE India', 'Vehicles'];
-const wealthValues = [totalEquity, STATIC_WEALTH.stockPlan, STATIC_WEALTH.k401, STATIC_WEALTH.brokerage, STATIC_WEALTH.indiaRE, STATIC_WEALTH.vehicles];
+const wealthValues = [totalEquity, wealth.stockPlan, wealth.k401, wealth.brokerage, wealth.indiaRE, wealth.vehicles];
 const wealthColors = ['#6366f1','#22c55e','#3b82f6','#06b6d4','#a855f7','#f97316'];
 
 new Chart(document.getElementById('chartWealthDist'), {
