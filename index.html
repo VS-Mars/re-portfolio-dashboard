@@ -289,7 +289,7 @@ async function loadData() {
 }
 
 function useFallback() {
-  wealth        = {...wealth};
+  wealth        = {...STATIC_WEALTH};
   properties    = FALLBACK_PROPERTIES;
   totalValue    = FALLBACK_SUMMARY.totalValue;
   totalEquity   = FALLBACK_SUMMARY.totalEquity;
@@ -824,9 +824,9 @@ renderProjections('base');
 
 // =========== TOTAL NET WORTH PROJECTIONS ===========
 const nwScenarios = {
-  base: { stockGr:0.07, indiaGr:0.04, vehGr:-0.08 },
-  bull: { stockGr:0.10, indiaGr:0.06, vehGr:-0.05 },
-  bear: { stockGr:0.03, indiaGr:0.02, vehGr:-0.10 },
+  base: { stockGr:0.07, indiaGr:0.00, vehGr:-0.08 },
+  bull: { stockGr:0.10, indiaGr:0.00, vehGr:-0.05 },
+  bear: { stockGr:0.03, indiaGr:0.00, vehGr:-0.10 },
 };
 
 function buildNWProjection(scenario) {
