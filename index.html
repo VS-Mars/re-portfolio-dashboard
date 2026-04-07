@@ -73,6 +73,10 @@
     <div class="chart-container"><canvas id="chartAssetBuckets"></canvas></div>
   </div>
 </div>
+<div class="card" style="margin-bottom:28px;">
+  <h3>10-Year Net Worth Trajectory (2026–2036)</h3>
+  <div class="chart-container-tall"><canvas id="chartNWTrajectory"></canvas></div>
+</div>
 
 <!-- Real Estate Portfolio (US) -->
 <div class="section-title">Real Estate Portfolio (US)</div>
@@ -909,6 +913,59 @@ function setNWScenario(s, btn) {
 }
 
 renderNWProjections('base');
+
+// =========== 10-YEAR NW TRAJECTORY (all 3 scenarios on one chart) ===========
+const trajBase = buildNWProjection('base');
+const trajBull = buildNWProjection('bull');
+const trajBear = buildNWProjection('bear');
+const trajYears = trajBase.years;
+const lastIdx = trajYears.length - 1;
+
+new Chart(document.getElementById('chartNWTrajectory'), {
+  type:'line',
+  data:{
+    labels: trajYears,
+    datasets:[
+      { label:'Bull (10% investments)',
+        data: trajBull.projTotalNW,
+        borderColor:'#3b82f6', borderDash:[6,3], borderWidth:2,
+        backgroundColor:'#3b82f618', fill:'+1', tension:0.4, pointRadius:0,
+        pointHoverRadius:5 },
+      { label:'Base (7% investments)',
+        data: trajBase.projTotalNW,
+        borderColor:'#22c55e', borderWidth:3,
+        backgroundColor:'#22c55e18', fill:false, tension:0.4,
+        pointRadius: ctx => ctx.dataIndex === 0 || ctx.dataIndex === lastIdx ? 6 : 0,
+        pointBackgroundColor:'#22c55e', pointHoverRadius:6 },
+      { label:'Bear (3% investments)',
+        data: trajBear.projTotalNW,
+        borderColor:'#f97316', borderDash:[6,3], borderWidth:2,
+        backgroundColor:'#f9731618', fill:'-1', tension:0.4, pointRadius:0,
+        pointHoverRadius:5 },
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    layout:{ padding:{ right:70 } },
+    scales:{
+      x:{ grid:{ color:'#2a2d3a' } },
+      y:{ ticks:{ callback:v=>fmtM(v) }, grid:{ color:'#2a2d3a' } }
+    },
+    plugins:{
+      tooltip:{
+        mode:'index', intersect:false,
+        callbacks:{ label:c=>c.dataset.label+': '+fmt(Math.round(c.raw)) }
+      },
+      datalabels:{
+        display: ctx => ctx.dataIndex === lastIdx,
+        anchor:'end', align:'right', offset:4,
+        color: ctx => ['#3b82f6','#22c55e','#f97316'][ctx.datasetIndex],
+        font:{ size:11, weight:'bold' },
+        formatter: v => fmtM(v)
+      }
+    }
+  }
+});
 
 } // end initDashboard()
 
