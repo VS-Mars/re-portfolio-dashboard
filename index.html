@@ -150,7 +150,25 @@
   </div>
 </div>
 
-<!-- Projections -->
+<!-- Total Net Worth Projections -->
+<div class="section-title">Total Net Worth Projection (2026–2036)</div>
+<div class="tab-bar">
+  <button class="nw-tab tab active" onclick="setNWScenario('base',this)">Base Case (7% Investments)</button>
+  <button class="nw-tab tab" onclick="setNWScenario('bull',this)">Bull (10% Investments)</button>
+  <button class="nw-tab tab" onclick="setNWScenario('bear',this)">Bear (3% Investments)</button>
+</div>
+<div class="grid-2">
+  <div class="card">
+    <h3>Projected Total Net Worth</h3>
+    <div class="chart-container-tall"><canvas id="chartNWProj"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>Net Worth by Asset Class</h3>
+    <div class="chart-container-tall"><canvas id="chartNWStack"></canvas></div>
+  </div>
+</div>
+
+<!-- RE Projections -->
 <div class="section-title">RE Forward Projections (2026–2036)</div>
 <div class="tab-bar">
   <button class="tab active" onclick="setScenario('base',this)">Base Case (3% Appr.)</button>
@@ -803,6 +821,94 @@ function setScenario(s, btn) {
 
 // Initial render
 renderProjections('base');
+
+// =========== TOTAL NET WORTH PROJECTIONS ===========
+const nwScenarios = {
+  base: { stockGr:0.07, indiaGr:0.04, vehGr:-0.08 },
+  bull: { stockGr:0.10, indiaGr:0.06, vehGr:-0.05 },
+  bear: { stockGr:0.03, indiaGr:0.02, vehGr:-0.10 },
+};
+
+function buildNWProjection(scenario) {
+  const ns = nwScenarios[scenario];
+  const reProj = buildProjection(scenario); // reuse RE projection (same base/bull/bear)
+  const n = reProj.years.length;
+
+  const projStocks   = Array.from({length:n}, (_,i) => wealth.stockPlan * Math.pow(1+ns.stockGr, i));
+  const projK401     = Array.from({length:n}, (_,i) => wealth.k401      * Math.pow(1+ns.stockGr, i));
+  const projBroke    = Array.from({length:n}, (_,i) => wealth.brokerage * Math.pow(1+ns.stockGr, i));
+  const projIndia    = Array.from({length:n}, (_,i) => wealth.indiaRE   * Math.pow(1+ns.indiaGr, i));
+  const projVehicles = Array.from({length:n}, (_,i) => Math.max(0, wealth.vehicles * Math.pow(1+ns.vehGr, i)));
+  const projTotalNW  = reProj.years.map((_,i) =>
+    reProj.projEquity[i] + projStocks[i] + projK401[i] + projBroke[i] + projIndia[i] + projVehicles[i]
+  );
+
+  return { years:reProj.years, projTotalNW, projREEquity:reProj.projEquity,
+           projStocks, projK401, projBroke, projIndia, projVehicles };
+}
+
+let nwProjCharts = {};
+
+function renderNWProjections(scenario) {
+  Object.values(nwProjCharts).forEach(c => c.destroy());
+  nwProjCharts = {};
+  const proj = buildNWProjection(scenario);
+  const ns = nwScenarios[scenario];
+
+  nwProjCharts.total = new Chart(document.getElementById('chartNWProj'), {
+    type:'line',
+    data:{
+      labels: proj.years,
+      datasets:[
+        { label:'Total Net Worth', data:proj.projTotalNW,
+          borderColor:'#22c55e', backgroundColor:'#22c55e15', fill:true, tension:0.3, borderWidth:3 },
+        { label:'RE Equity (US)', data:proj.projREEquity,
+          borderColor:'#6366f1', tension:0.3, borderDash:[6,3] },
+        { label:'Investments (Stocks+401k+Brokerage)',
+          data:proj.years.map((_,i) => proj.projStocks[i]+proj.projK401[i]+proj.projBroke[i]),
+          borderColor:'#3b82f6', tension:0.3, borderDash:[6,3] },
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ y:{ ticks:{ callback:v=>fmtM(v) } } },
+      plugins:{
+        datalabels:{ display:false },
+        tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(Math.round(c.raw)) } },
+        title:{ display:true, text:'Investments @ '+pct(ns.stockGr*100)+'/yr · India RE @ '+pct(ns.indiaGr*100)+'/yr · Vehicles '+pct(ns.vehGr*100)+'/yr', color:'#9ca3af', font:{size:11} }
+      }
+    }
+  });
+
+  nwProjCharts.stack = new Chart(document.getElementById('chartNWStack'), {
+    type:'bar',
+    data:{
+      labels: proj.years,
+      datasets:[
+        { label:'RE Equity (US)', data:proj.projREEquity, backgroundColor:'#6366f1bb', stack:'nw' },
+        { label:'Stock Plan',     data:proj.projStocks,   backgroundColor:'#22c55ebb', stack:'nw' },
+        { label:'401(k)',         data:proj.projK401,     backgroundColor:'#3b82f6bb', stack:'nw' },
+        { label:'Brokerage',      data:proj.projBroke,    backgroundColor:'#06b6d4bb', stack:'nw' },
+        { label:'RE India',       data:proj.projIndia,    backgroundColor:'#a855f7bb', stack:'nw' },
+        { label:'Vehicles',       data:proj.projVehicles, backgroundColor:'#f97316bb', stack:'nw' },
+      ]
+    },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ x:{ stacked:true }, y:{ stacked:true, ticks:{ callback:v=>fmtM(v) } } },
+      plugins:{
+        datalabels:{ display:false },
+        tooltip:{ callbacks:{ label:c=>c.dataset.label+': '+fmt(Math.round(c.raw)) } }
+      }
+    }
+  });
+}
+
+function setNWScenario(s, btn) {
+  document.querySelectorAll('.nw-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderNWProjections(s);
+}
+
+renderNWProjections('base');
 
 } // end initDashboard()
 
