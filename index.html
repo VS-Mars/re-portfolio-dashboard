@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Real Estate Portfolio Dashboard</title>
+<title>Net Worth Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <style>
@@ -56,15 +56,30 @@
 </head>
 <body>
 
-<h1>Real Estate Portfolio Dashboard</h1>
-<p class="subtitle">14 Properties &bull; Updated April 2026</p>
+<h1>Net Worth Dashboard</h1>
+<p class="subtitle">Real Estate &bull; Investments &bull; Other Assets &bull; Updated April 2026</p>
 <div id="dataBanner" style="font-size:12px;color:var(--muted);margin-bottom:16px;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;display:inline-block;">Loading data...</div>
 
-<!-- KPI Row -->
+<!-- Total Net Worth Overview -->
+<div class="section-title" style="margin-top:0;border-top:none;padding-top:0;">Total Net Worth</div>
+<div class="kpi-row" id="nwKpis"></div>
+<div class="grid-2">
+  <div class="card">
+    <h3>Wealth Distribution</h3>
+    <div class="chart-container"><canvas id="chartWealthDist"></canvas></div>
+  </div>
+  <div class="card">
+    <h3>Assets by Bucket</h3>
+    <div class="chart-container"><canvas id="chartAssetBuckets"></canvas></div>
+  </div>
+</div>
+
+<!-- Real Estate Portfolio (US) -->
+<div class="section-title">Real Estate Portfolio (US)</div>
 <div class="kpi-row" id="kpis"></div>
 
-<!-- Net Worth & Equity -->
-<div class="section-title">Net Worth & Equity</div>
+<!-- RE Equity & Value -->
+<div class="section-title">RE Equity & Value</div>
 <div class="grid-2">
   <div class="card">
     <h3>Portfolio Value vs Debt</h3>
@@ -113,7 +128,7 @@
 </div>
 
 <!-- Historical Trends -->
-<div class="section-title">10-Year Historical Trends (2016–2026)</div>
+<div class="section-title">RE Historical Trends (2016–2026)</div>
 <div class="grid-2">
   <div class="card">
     <h3>Portfolio Value & Equity Growth</h3>
@@ -130,13 +145,13 @@
     <div class="chart-container-tall"><canvas id="chartHistDebt"></canvas></div>
   </div>
   <div class="card">
-    <h3>Number of Properties & Net Worth</h3>
+    <h3>Number of Properties & RE Net Worth</h3>
     <div class="chart-container-tall"><canvas id="chartHistCount"></canvas></div>
   </div>
 </div>
 
 <!-- Projections -->
-<div class="section-title">10-Year Forward Projections (2026–2036)</div>
+<div class="section-title">RE Forward Projections (2026–2036)</div>
 <div class="tab-bar">
   <button class="tab active" onclick="setScenario('base',this)">Base Case (3% Appr.)</button>
   <button class="tab" onclick="setScenario('bull',this)">Bull (5% Appr.)</button>
@@ -170,25 +185,34 @@ const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzlydXwGyYeYQpDebUbq
 
 // =========== FALLBACK DATA (used if SCRIPT_URL is empty or fetch fails) ===========
 const FALLBACK_PROPERTIES = [
-  { id:1, name:"Las Palmas Dr", purchased:"2007-12-04", price:1000000, value:2380000, equity:1258735, loan:1121265, rate:2.875, taxRate:1.2, repairs:4, rent:5900, dwelling:38, piti:83771, down:50 },
-  { id:2, name:"Olivestone Way", purchased:"2019-12-26", price:1030000, value:1693000, equity:994571, loan:698429, rate:3.25, taxRate:1.385, repairs:4, rent:4350, dwelling:19.4, piti:58714, down:26 },
-  { id:3, name:"Rancho Dr", purchased:"2020-04-17", price:453330, value:511000, equity:204133, loan:306867, rate:3.625, taxRate:1.42, repairs:2, rent:2750, dwelling:50, piti:32351, down:25 },
-  { id:4, name:"Sage St", purchased:"2021-03-10", price:1111500, value:1340000, equity:582720, loan:757280, rate:3.5, taxRate:1.25, repairs:2, rent:5750, dwelling:55, piti:61871, down:26 },
-  { id:5, name:"Linda Vista Dr", purchased:"2021-11-29", price:1000000, value:1200000, equity:250000, loan:702280, rate:3.625, taxRate:1.25, repairs:4, rent:3640, dwelling:35, piti:58404, down:25 },
-  { id:6, name:"E Hills Dr", purchased:"2022-02-11", price:790000, value:860000, equity:197500, loan:561856, rate:4.375, taxRate:1.25, repairs:4, rent:3400, dwelling:38, piti:49180, down:25 },
-  { id:7, name:"Gawain Dr", purchased:"2022-12-30", price:860000, value:1090000, equity:304800, loan:785200, rate:7.375, taxRate:1.25, repairs:4, rent:6990, dwelling:78, piti:88945, down:12.5 },
-  { id:8, name:"N 13th St", purchased:"2023-08-03", price:910000, value:1025000, equity:255000, loan:770000, rate:6.75, taxRate:1.25, repairs:4, rent:6000, dwelling:90, piti:76091, down:18 },
-  { id:9, name:"S 3rd St", purchased:"2023-09-05", price:825000, value:1050000, equity:518000, loan:532000, rate:5.75, taxRate:1.25, repairs:8, rent:5400, dwelling:90, piti:56769, down:15 },
-  { id:10, name:"4th Ave", purchased:"2024-11-07", price:1100000, value:930000, equity:144250, loan:785750, rate:6.75, taxRate:1.25, repairs:2, rent:7350, dwelling:55, piti:81725, down:22.25 },
-  { id:11, name:"Spring Canyon Trl", purchased:"2020-08-03", price:271000, value:388000, equity:106223, loan:281777, rate:3.625, taxRate:2.24, repairs:6, rent:2040, dwelling:80, piti:27052, down:25 },
-  { id:12, name:"Fowler Mill Cv", purchased:"2020-08-03", price:386000, value:510000, equity:157397, loan:352603, rate:3.625, taxRate:2.41, repairs:6, rent:2540, dwelling:100, piti:35474, down:25 },
-  { id:13, name:"Hearthstone Dr", purchased:"2021-06-30", price:660000, value:675000, equity:211000, loan:464000, rate:3.25, taxRate:2.38, repairs:15, rent:6050, dwelling:90, piti:61286, down:25 },
-  { id:14, name:"Larga Vista Dr", purchased:"2018-01-19", price:2550000, value:4000000, equity:2000000, loan:1848000, rate:3.5, taxRate:1.3, repairs:3, rent:0, dwelling:100, piti:139811, down:31.5 },
+  { id:1,  name:"Las Palmas Dr",      purchased:"2007-12-04", price:1000000, value:2578800, equity:1457535, loan:1121265, rate:2.875, taxRate:1.200, repairs:4,  rent:5900, piti:85370,  down:50.0  },
+  { id:2,  name:"Olivestone Way",     purchased:"2019-12-26", price:1030000, value:1627500, equity:929071,  loan:698429,  rate:3.250, taxRate:1.385, repairs:4,  rent:4350, piti:59994,  down:26.0  },
+  { id:3,  name:"Rancho Dr",          purchased:"2020-04-17", price:453330,  value:517900,  equity:211033,  loan:306867,  rate:3.625, taxRate:1.420, repairs:2,  rent:2750, piti:27058,  down:25.0  },
+  { id:4,  name:"Sage St",            purchased:"2021-03-10", price:1111500, value:1422400, equity:665120,  loan:757280,  rate:3.500, taxRate:1.250, repairs:2,  rent:5750, piti:63088,  down:26.0  },
+  { id:5,  name:"Linda Vista Dr",     purchased:"2021-11-29", price:1000000, value:1155700, equity:453420,  loan:702280,  rate:3.625, taxRate:1.250, repairs:4,  rent:3640, piti:58877,  down:25.0  },
+  { id:6,  name:"E Hills Dr",         purchased:"2022-02-11", price:790000,  value:807800,  equity:245944,  loan:561856,  rate:4.375, taxRate:1.250, repairs:4,  rent:3400, piti:49644,  down:25.0  },
+  { id:7,  name:"Gawain Dr",          purchased:"2022-12-30", price:860000,  value:1140400, equity:355200,  loan:785200,  rate:7.375, taxRate:1.250, repairs:4,  rent:6990, piti:83205,  down:12.5  },
+  { id:8,  name:"N 13th St",          purchased:"2023-08-03", price:910000,  value:1086500, equity:316500,  loan:770000,  rate:6.750, taxRate:1.250, repairs:4,  rent:6000, piti:77791,  down:18.0  },
+  { id:9,  name:"S 3rd St",           purchased:"2023-09-05", price:825000,  value:894800,  equity:362800,  loan:532000,  rate:5.750, taxRate:1.250, repairs:8,  rent:5400, piti:56746,  down:15.0  },
+  { id:10, name:"4th Ave",            purchased:"2024-11-07", price:1100000, value:1104900, equity:319150,  loan:785750,  rate:6.750, taxRate:1.250, repairs:2,  rent:7350, piti:80741,  down:22.3  },
+  { id:11, name:"Spring Canyon Trl",  purchased:"2020-08-03", price:271000,  value:366700,  equity:84923,   loan:281777,  rate:3.625, taxRate:2.240, repairs:6,  rent:2040, piti:27034,  down:25.0  },
+  { id:12, name:"Fowler Mill Cv",     purchased:"2020-08-03", price:386000,  value:498600,  equity:145997,  loan:352603,  rate:3.625, taxRate:2.410, repairs:6,  rent:2540, piti:35623,  down:25.0  },
+  { id:13, name:"Hearthstone Dr",     purchased:"2021-06-30", price:660000,  value:637000,  equity:173000,  loan:464000,  rate:3.250, taxRate:2.380, repairs:15, rent:6050, piti:56433,  down:25.0  },
+  { id:14, name:"Larga Vista Dr",     purchased:"2018-01-19", price:2550000, value:4197500, equity:2349500, loan:1848000, rate:3.500, taxRate:1.300, repairs:3,  rent:0,    piti:144994, down:31.5  },
 ];
 const FALLBACK_SUMMARY = {
-  totalValue:17652000, totalEquity:7184329, totalLoans:9967307,
-  totalAnnualRent:745920, totalPITI:911444, totalITI:735169,
-  cashflowPITI:-165524, cashflowITI:10751, ror:23.35, overallProfit:639812
+  totalValue:18036500, totalEquity:8069193, totalLoans:9967307,
+  totalAnnualRent:745920, totalPITI:906600, totalITI:705356,
+  cashflowPITI:-160679, cashflowITI:40564, ror:23.35, overallProfit:639812
+};
+
+// =========== STATIC NON-RE WEALTH (from Monarch Money snapshot, April 2026) ===========
+const STATIC_WEALTH = {
+  stockPlan:  637875,   // SNPS Stock Plan (...7505)
+  k401:       982846,   // Synopsys 401k $665,543 + Cisco 401k $317,303
+  brokerage:  121087,   // Joint Brokerage $28,600 + Non-Prototype $92,486
+  indiaRE:    265000,   // Srirangam $55k + Ammiyammal $90k + Naveens $120k
+  vehicles:    79846,   // Tesla Model X $73,976 + Acura TL $5,870
 };
 
 // =========== BOOTSTRAP ===========
@@ -273,6 +297,69 @@ const kpiData = [
 document.getElementById('kpis').innerHTML = kpiData.map(k =>
   `<div class="kpi"><div class="kpi-label">${k.label}</div><div class="kpi-value ${k.cls||''}">${k.value}</div><div class="kpi-sub">${k.sub}</div></div>`
 ).join('');
+
+// =========== TOTAL NET WORTH SECTION ===========
+const totalNonRE      = Object.values(STATIC_WEALTH).reduce((s,v)=>s+v, 0);
+const totalInvestments = STATIC_WEALTH.stockPlan + STATIC_WEALTH.k401 + STATIC_WEALTH.brokerage;
+const totalNetWorth   = totalEquity + totalNonRE;
+const totalGrossAssets = totalValue + totalNonRE;
+
+const nwKpiData = [
+  { label:'Total Net Worth',    value:fmt(totalNetWorth),   sub:'All assets minus RE debt', cls:'positive' },
+  { label:'Total Gross Assets', value:fmt(totalGrossAssets), sub:'Debt: ' + fmt(totalLoans) },
+  { label:'Investments',        value:fmt(totalInvestments), sub:'Stocks · 401(k) · Brokerage' },
+  { label:'Other Assets',       value:fmt(STATIC_WEALTH.indiaRE + STATIC_WEALTH.vehicles), sub:'India RE · Vehicles' },
+];
+document.getElementById('nwKpis').innerHTML = nwKpiData.map(k =>
+  `<div class="kpi"><div class="kpi-label">${k.label}</div><div class="kpi-value ${k.cls||''}">${k.value}</div><div class="kpi-sub">${k.sub}</div></div>`
+).join('');
+
+const wealthLabels = ['RE Equity (US)', 'Stock Plan (SNPS)', '401(k)', 'Brokerage', 'RE India', 'Vehicles'];
+const wealthValues = [totalEquity, STATIC_WEALTH.stockPlan, STATIC_WEALTH.k401, STATIC_WEALTH.brokerage, STATIC_WEALTH.indiaRE, STATIC_WEALTH.vehicles];
+const wealthColors = ['#6366f1','#22c55e','#3b82f6','#06b6d4','#a855f7','#f97316'];
+
+new Chart(document.getElementById('chartWealthDist'), {
+  type:'doughnut',
+  data:{
+    labels: wealthLabels,
+    datasets:[{ data: wealthValues, backgroundColor: wealthColors }]
+  },
+  options:{ responsive:true, maintainAspectRatio:false,
+    plugins:{
+      tooltip:{ callbacks:{ label:c=>c.label+': '+fmt(c.raw)+' ('+pct(c.raw/totalNetWorth*100)+')' } },
+      datalabels:{
+        color:'#fff', font:{ size:10, weight:'bold' },
+        formatter:(value)=>pct(value/totalNetWorth*100),
+        display: ctx => (ctx.dataset.data[ctx.dataIndex]/totalNetWorth*100) > 2
+      }
+    }
+  }
+});
+
+new Chart(document.getElementById('chartAssetBuckets'), {
+  type:'bar',
+  data:{
+    labels: wealthLabels,
+    datasets:[{
+      label:'Value',
+      data: wealthValues,
+      backgroundColor: wealthColors.map(c=>c+'99'),
+      borderRadius:6
+    }]
+  },
+  options:{ responsive:true, maintainAspectRatio:false,
+    scales:{ y:{ ticks:{ callback:v=>fmtM(v) } } },
+    plugins:{
+      tooltip:{ callbacks:{ label:c=>fmt(c.raw)+' ('+pct(c.raw/totalNetWorth*100)+' of NW)' } },
+      datalabels:{
+        anchor:'end', align:'end',
+        color:'#e4e4e7', font:{ size:9 },
+        formatter: value => fmtM(value),
+        rotation:-45, offset:2
+      }
+    }
+  }
+});
 
 // =========== NET WORTH CHARTS ===========
 new Chart(document.getElementById('chartValueDebt'), {
@@ -565,7 +652,7 @@ new Chart(document.getElementById('chartHistCount'), {
   data:{
     labels:hist.years,
     datasets:[
-      { label:'Net Worth', data:hist.histEquity, borderColor:'#6366f1', tension:0.3, yAxisID:'y' },
+      { label:'RE Net Worth', data:hist.histEquity, borderColor:'#6366f1', tension:0.3, yAxisID:'y' },
       { label:'# Properties', data:hist.histCount, borderColor:'#a855f7', tension:0.3, yAxisID:'y1', stepped:true },
     ]
   },
@@ -575,6 +662,7 @@ new Chart(document.getElementById('chartHistCount'), {
       y1:{ position:'right', grid:{ drawOnChartArea:false }, ticks:{ stepSize:1 } }
     },
     plugins:{ datalabels:{ display:false }, tooltip:{ callbacks:{ label:c=> c.dataset.label === '# Properties' ? c.raw+' properties' : c.dataset.label+': '+fmt(c.raw) } } }
+
   }
 });
 
