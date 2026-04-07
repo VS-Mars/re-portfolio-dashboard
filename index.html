@@ -207,7 +207,7 @@ const FALLBACK_SUMMARY = {
 };
 
 // =========== STATIC NON-RE WEALTH (from Monarch Money snapshot, April 2026) ===========
-const wealth = {
+const STATIC_WEALTH = {
   stockPlan:  637875,   // SNPS Stock Plan (...7505)
   k401:       982846,   // Synopsys 401k $665,543 + Cisco 401k $317,303
   brokerage:  121087,   // Joint Brokerage $28,600 + Non-Prototype $92,486
@@ -223,7 +223,10 @@ async function loadData() {
   const banner = document.getElementById('dataBanner');
   if (SCRIPT_URL) {
     try {
-      const res = await fetch(SCRIPT_URL);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+      const res = await fetch(SCRIPT_URL, { signal: controller.signal });
+      clearTimeout(timeout);
       const json = await res.json();
       properties = json.properties;
 
@@ -242,7 +245,7 @@ async function loadData() {
       overallProfit   = get('Overall Annual Profit','Overall Profit');
 
       // Parse Other Assets tab into wealth buckets
-      wealth = {...wealth}; // start with fallback
+      wealth = {...STATIC_WEALTH}; // start with fallback
       if (json.otherAssets && json.otherAssets.length > 0) {
         const sum = (...terms) => json.otherAssets
           .filter(a => terms.some(t => a.name.toLowerCase().includes(t.toLowerCase())))
